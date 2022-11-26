@@ -1,10 +1,15 @@
 package main
 
 import (
-	"os"
+	"context"
+	"fmt"
+	"go-cdk-go-apprunner/input"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapprunner"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/apprunner"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 )
@@ -25,6 +30,7 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 	}
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
+	// There is an L2 construct if it is an alpha version.
 	awsapprunner.NewCfnService(stack, jsii.String("AppRunnerService"), &awsapprunner.CfnServiceProps{
 		SourceConfiguration: &awsapprunner.CfnService_SourceConfigurationProperty{
 			AutoDeploymentsEnabled: jsii.Bool(true),
@@ -67,19 +73,54 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 	return stack
 }
 
+func getConnectionArn(connectionName string, region string) (string, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+	if err != nil {
+		return "", err
+	}
+
+	client := apprunner.NewFromConfig(cfg)
+
+	input := &apprunner.ListConnectionsInput{
+		ConnectionName: aws.String(connectionName),
+	}
+
+	output, err := client.ListConnections(context.TODO(), input)
+	if err != nil {
+		return "", err
+	}
+
+	if len(output.ConnectionSummaryList) > 0 {
+		connectionArn := aws.ToString(output.ConnectionSummaryList[0].ConnectionArn)
+		return connectionArn, nil
+	}
+
+	return "", fmt.Errorf("connection not found.")
+}
+
 func main() {
 	app := awscdk.NewApp(nil)
 
-	NewAppRunnerStack(app, "AppRunnerStack", &AppRunnerStackProps{
+	appRunnerStackInputs := input.NewAppRunnerStackInputs()
+
+	// You must create a connection at the AWS AppRunner console before deploy.
+	connectionArn, err := getConnectionArn(appRunnerStackInputs.ConnectionName, aws.ToString(app.Region()))
+	if err != nil {
+		panic(err)
+	}
+
+	appRunnerStackProps := &AppRunnerStackProps{
 		awscdk.StackProps{
 			Env: env(),
 		},
-		"https://github.com/go-to-k/go-cdk-go-managed-apprunner",
-		"master",
-		"go install",
-		"go run app/main.go",
-		os.Getenv("CONNECTION_ARN"),
-	})
+		appRunnerStackInputs.RepositoryUrl,
+		appRunnerStackInputs.BranchName,
+		appRunnerStackInputs.BuildCommand,
+		appRunnerStackInputs.StartCommand,
+		connectionArn,
+	}
+
+	NewAppRunnerStack(app, "AppRunnerStack", appRunnerStackProps)
 
 	app.Synth(nil)
 }

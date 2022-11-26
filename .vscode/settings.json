@@ -5,6 +5,7 @@
         "jsii",
         "awsapprunner",
         "apprunner",
+        "customresources",
         "gomod",
     ]
 }
