@@ -30,6 +30,32 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 	}
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
+	// TODO: Use API rather than custom resource ?(Because needs arn on delete but it is only generated on create)
+	// autoScalingConfigurationResult := customresources.NewAwsCustomResource(stack, jsii.String("AutoScalingConfiguration"), &customresources.AwsCustomResourceProps{
+	// 	Policy: customresources.AwsCustomResourcePolicy_FromSdkCalls(&customresources.SdkCallsPolicyOptions{
+	// 		Resources: customresources.AwsCustomResourcePolicy_ANY_RESOURCE(),
+	// 	}),
+	// 	OnCreate: &customresources.AwsSdkCall{
+	// 		Service: jsii.String("AppRunner"),
+	// 		Action:  jsii.String("createAutoScalingConfiguration"),
+	// 		Parameters: map[string]interface{}{
+	// 			"AutoScalingConfigurationName": jsii.String(*props.StackName),
+	// 			"MaxConcurrency":               jsii.String("50"),
+	// 			"MaxSize":                      jsii.String("3"),
+	// 			"MinSize":                      jsii.String("1"),
+	// 		},
+	// 		PhysicalResourceId: customresources.PhysicalResourceId_Of(jsii.String("AutoScalingConfiguration")),
+	// 	},
+	// 	OnDelete: &customresources.AwsSdkCall{
+	// 		Service: jsii.String("AppRunner"),
+	// 		Action:  jsii.String("deleteAutoScalingConfiguration"),
+	// 		Parameters: map[string]interface{}{
+	// 			"AutoScalingConfigurationArn": jsii.String(""),
+	// 		},
+	// 	},
+	// })
+	// autoScalingConfigurationResult.GetResponseField(jsii.String("AutoScalingConfiguration.AutoScalingConfigurationArn"))
+
 	// There is an L2 construct if it is an alpha version.
 	awsapprunner.NewCfnService(stack, jsii.String("AppRunnerService"), &awsapprunner.CfnServiceProps{
 		SourceConfiguration: &awsapprunner.CfnService_SourceConfigurationProperty{
