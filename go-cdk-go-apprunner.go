@@ -1,29 +1,68 @@
 package main
 
 import (
+	"os"
+
 	"github.com/aws/aws-cdk-go/awscdk/v2"
-	// "github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsapprunner"
 	"github.com/aws/constructs-go/constructs/v10"
-	// "github.com/aws/jsii-runtime-go"
+	"github.com/aws/jsii-runtime-go"
 )
 
-type GoCdkGoApprunnerStackProps struct {
+type AppRunnerStackProps struct {
 	awscdk.StackProps
+	repositoryUrl string
+	branchName    string
+	buildCommand  string
+	startCommand  string
+	connectionArn string
 }
 
-func NewGoCdkGoApprunnerStack(scope constructs.Construct, id string, props *GoCdkGoApprunnerStackProps) awscdk.Stack {
+func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerStackProps) awscdk.Stack {
 	var sprops awscdk.StackProps
 	if props != nil {
 		sprops = props.StackProps
 	}
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
-	// The code that defines your stack goes here
-
-	// example resource
-	// queue := awssqs.NewQueue(stack, jsii.String("GoCdkGoApprunnerQueue"), &awssqs.QueueProps{
-	// 	VisibilityTimeout: awscdk.Duration_Seconds(jsii.Number(300)),
-	// })
+	awsapprunner.NewCfnService(stack, jsii.String("AppRunnerService"), &awsapprunner.CfnServiceProps{
+		SourceConfiguration: &awsapprunner.CfnService_SourceConfigurationProperty{
+			AutoDeploymentsEnabled: jsii.Bool(true),
+			AuthenticationConfiguration: &awsapprunner.CfnService_AuthenticationConfigurationProperty{
+				ConnectionArn: jsii.String(props.connectionArn),
+			},
+			CodeRepository: &awsapprunner.CfnService_CodeRepositoryProperty{
+				RepositoryUrl: jsii.String(props.repositoryUrl),
+				SourceCodeVersion: &awsapprunner.CfnService_SourceCodeVersionProperty{
+					Type:  jsii.String("BRANCH"),
+					Value: jsii.String(props.branchName),
+				},
+				CodeConfiguration: &awsapprunner.CfnService_CodeConfigurationProperty{
+					ConfigurationSource: jsii.String("API"),
+					CodeConfigurationValues: &awsapprunner.CfnService_CodeConfigurationValuesProperty{
+						Runtime:      jsii.String("GO_1"),
+						BuildCommand: jsii.String(props.buildCommand),
+						Port:         jsii.String("8080"),
+						RuntimeEnvironmentVariables: []interface{}{
+							&awsapprunner.CfnService_KeyValuePairProperty{
+								Name:  jsii.String("ENV1"),
+								Value: jsii.String("Test"),
+							},
+						},
+						StartCommand: jsii.String(props.startCommand),
+					},
+				},
+			},
+		},
+		HealthCheckConfiguration: &awsapprunner.CfnService_HealthCheckConfigurationProperty{
+			Path:     jsii.String("/"),
+			Protocol: jsii.String("HTTP"),
+		},
+		InstanceConfiguration: &awsapprunner.CfnService_InstanceConfigurationProperty{
+			Cpu:    jsii.String("1 vCPU"),
+			Memory: jsii.String("2 GB"),
+		},
+	})
 
 	return stack
 }
@@ -31,10 +70,15 @@ func NewGoCdkGoApprunnerStack(scope constructs.Construct, id string, props *GoCd
 func main() {
 	app := awscdk.NewApp(nil)
 
-	NewGoCdkGoApprunnerStack(app, "GoCdkGoApprunnerStack", &GoCdkGoApprunnerStackProps{
+	NewAppRunnerStack(app, "AppRunnerStack", &AppRunnerStackProps{
 		awscdk.StackProps{
 			Env: env(),
 		},
+		"https://github.com/go-to-k/go-cdk-go-managed-apprunner",
+		"main",
+		"go install",
+		"go run app/main.go",
+		os.Getenv("CONNECTION_ARN"),
 	})
 
 	app.Synth(nil)
