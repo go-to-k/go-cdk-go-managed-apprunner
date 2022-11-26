@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"go-cdk-go-apprunner/input"
+	"strconv"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapprunner"
+	"github.com/aws/aws-cdk-go/awscdk/v2/customresources"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/apprunner"
@@ -16,11 +18,17 @@ import (
 
 type AppRunnerStackProps struct {
 	awscdk.StackProps
-	repositoryUrl string
-	branchName    string
-	buildCommand  string
-	startCommand  string
-	connectionArn string
+	repositoryUrl  string
+	branchName     string
+	buildCommand   string
+	startCommand   string
+	Cpu            string
+	Memory         string
+	Port           int
+	MaxConcurrency int
+	MaxSize        int
+	MinSize        int
+	connectionArn  string
 }
 
 func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerStackProps) awscdk.Stack {
@@ -31,30 +39,30 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
 	// TODO: Use API rather than custom resource ?(Because needs arn on delete but it is only generated on create)
-	// autoScalingConfigurationResult := customresources.NewAwsCustomResource(stack, jsii.String("AutoScalingConfiguration"), &customresources.AwsCustomResourceProps{
-	// 	Policy: customresources.AwsCustomResourcePolicy_FromSdkCalls(&customresources.SdkCallsPolicyOptions{
-	// 		Resources: customresources.AwsCustomResourcePolicy_ANY_RESOURCE(),
-	// 	}),
-	// 	OnCreate: &customresources.AwsSdkCall{
-	// 		Service: jsii.String("AppRunner"),
-	// 		Action:  jsii.String("createAutoScalingConfiguration"),
-	// 		Parameters: map[string]interface{}{
-	// 			"AutoScalingConfigurationName": jsii.String(*props.StackName),
-	// 			"MaxConcurrency":               jsii.String("50"),
-	// 			"MaxSize":                      jsii.String("3"),
-	// 			"MinSize":                      jsii.String("1"),
-	// 		},
-	// 		PhysicalResourceId: customresources.PhysicalResourceId_Of(jsii.String("AutoScalingConfiguration")),
-	// 	},
-	// 	OnDelete: &customresources.AwsSdkCall{
-	// 		Service: jsii.String("AppRunner"),
-	// 		Action:  jsii.String("deleteAutoScalingConfiguration"),
-	// 		Parameters: map[string]interface{}{
-	// 			"AutoScalingConfigurationArn": jsii.String(""),
-	// 		},
-	// 	},
-	// })
-	// autoScalingConfigurationResult.GetResponseField(jsii.String("AutoScalingConfiguration.AutoScalingConfigurationArn"))
+	autoScalingConfigurationResult := customresources.NewAwsCustomResource(stack, jsii.String("AutoScalingConfiguration"), &customresources.AwsCustomResourceProps{
+		Policy: customresources.AwsCustomResourcePolicy_FromSdkCalls(&customresources.SdkCallsPolicyOptions{
+			Resources: customresources.AwsCustomResourcePolicy_ANY_RESOURCE(),
+		}),
+		OnCreate: &customresources.AwsSdkCall{
+			Service: jsii.String("AppRunner"),
+			Action:  jsii.String("createAutoScalingConfiguration"),
+			Parameters: map[string]interface{}{
+				"AutoScalingConfigurationName": jsii.String(*stack.StackName()),
+				"MaxConcurrency":               jsii.String(strconv.Itoa(props.MaxConcurrency)),
+				"MaxSize":                      jsii.String(strconv.Itoa(props.MaxSize)),
+				"MinSize":                      jsii.String(strconv.Itoa(props.MinSize)),
+			},
+			PhysicalResourceId: customresources.PhysicalResourceId_Of(jsii.String("AutoScalingConfiguration")),
+		},
+		// OnDelete: &customresources.AwsSdkCall{
+		// 	Service: jsii.String("AppRunner"),
+		// 	Action:  jsii.String("deleteAutoScalingConfiguration"),
+		// 	Parameters: map[string]interface{}{
+		// 		"AutoScalingConfigurationArn": jsii.String(""),
+		// 	},
+		// },
+	})
+	autoScalingConfigurationArn := autoScalingConfigurationResult.GetResponseField(jsii.String("AutoScalingConfiguration.AutoScalingConfigurationArn"))
 
 	// There is an L2 construct if it is an alpha version.
 	awsapprunner.NewCfnService(stack, jsii.String("AppRunnerService"), &awsapprunner.CfnServiceProps{
@@ -74,7 +82,7 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 					CodeConfigurationValues: &awsapprunner.CfnService_CodeConfigurationValuesProperty{
 						Runtime:      jsii.String("GO_1"),
 						BuildCommand: jsii.String(props.buildCommand),
-						Port:         jsii.String("8080"),
+						Port:         jsii.String(strconv.Itoa(props.Port)),
 						RuntimeEnvironmentVariables: []interface{}{
 							&awsapprunner.CfnService_KeyValuePairProperty{
 								Name:  jsii.String("ENV1"),
@@ -91,9 +99,10 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 			Protocol: jsii.String("HTTP"),
 		},
 		InstanceConfiguration: &awsapprunner.CfnService_InstanceConfigurationProperty{
-			Cpu:    jsii.String("1 vCPU"),
-			Memory: jsii.String("2 GB"),
+			Cpu:    jsii.String(props.Cpu),
+			Memory: jsii.String(props.Memory),
 		},
+		AutoScalingConfigurationArn: autoScalingConfigurationArn,
 	})
 
 	return stack
@@ -143,6 +152,12 @@ func main() {
 		appRunnerStackInputs.BranchName,
 		appRunnerStackInputs.BuildCommand,
 		appRunnerStackInputs.StartCommand,
+		appRunnerStackInputs.Cpu,
+		appRunnerStackInputs.Memory,
+		appRunnerStackInputs.Port,
+		appRunnerStackInputs.MaxConcurrency,
+		appRunnerStackInputs.MaxSize,
+		appRunnerStackInputs.MinSize,
 		connectionArn,
 	}
 
