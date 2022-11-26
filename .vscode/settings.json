@@ -1,0 +1,30 @@
+{
+	"go.autocompleteUnimportedPackages": true,
+    "go.buildOnSave": "off",
+	"go.coverageOptions": "showUncoveredCodeOnly",
+	"go.coverOnSave": true,
+	"go.coverageDecorator": {
+		"type": "gutter"
+	},
+	"go.formatTool": "goimports",
+	"go.gotoSymbol.includeGoroot": true,
+	"go.lintTool": "staticcheck",
+	"go.testOnSave": false,
+    "cSpell.words": [
+        "awscdk",
+        "sprops",
+        "jsii",
+        "awsapprunner",
+        "apprunner",
+        "customresources",
+        "awslambda",
+        "awsiam",
+        "awss",
+        "awsec",
+        "awscdkapprunneralpha",
+        "gomod",
+        "gonic",
+        "cupaloy",
+        "bradleyjkemp",
+    ]
+}
