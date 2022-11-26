@@ -75,7 +75,7 @@ func main() {
 			Env: env(),
 		},
 		"https://github.com/go-to-k/go-cdk-go-managed-apprunner",
-		"main",
+		"master",
 		"go install",
 		"go run app/main.go",
 		os.Getenv("CONNECTION_ARN"),
