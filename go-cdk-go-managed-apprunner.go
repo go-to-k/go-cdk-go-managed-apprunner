@@ -174,8 +174,8 @@ func main() {
 		},
 		&AutoScalingConfigurationArnProps{
 			appRunnerStackInputs.AutoScalingConfigurationArnInputs.MaxConcurrency,
-			appRunnerStackInputs.AutoScalingConfigurationArnInputs.MinSize,
 			appRunnerStackInputs.AutoScalingConfigurationArnInputs.MaxSize,
+			appRunnerStackInputs.AutoScalingConfigurationArnInputs.MinSize,
 		},
 	}
 
