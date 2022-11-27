@@ -1,5 +1,5 @@
 {
-  "app": "go mod download && go run go-cdk-go-apprunner.go",
+  "app": "go mod download && go run go-cdk-go-managed-apprunner.go",
   "watch": {
     "include": [
       "**"

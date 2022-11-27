@@ -1,4 +1,4 @@
-module go-cdk-go-apprunner
+module go-cdk-go-managed-apprunner
 
 go 1.18
 

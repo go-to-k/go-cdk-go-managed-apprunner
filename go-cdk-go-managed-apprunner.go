@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"go-cdk-go-apprunner/input"
+	"go-cdk-go-managed-apprunner/input"
 	"strconv"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
@@ -18,17 +18,29 @@ import (
 
 type AppRunnerStackProps struct {
 	awscdk.StackProps
-	repositoryUrl  string
-	branchName     string
-	buildCommand   string
-	startCommand   string
-	Cpu            string
-	Memory         string
-	Port           int
+	SourceConfigurationProps         *SourceConfigurationProps
+	InstanceConfigurationProps       *InstanceConfigurationProps
+	AutoScalingConfigurationArnProps *AutoScalingConfigurationArnProps
+}
+
+type SourceConfigurationProps struct {
+	RepositoryUrl string
+	BranchName    string
+	BuildCommand  string
+	StartCommand  string
+	Port          int
+	ConnectionArn string
+}
+
+type InstanceConfigurationProps struct {
+	Cpu    string
+	Memory string
+}
+
+type AutoScalingConfigurationArnProps struct {
 	MaxConcurrency int
 	MaxSize        int
 	MinSize        int
-	connectionArn  string
 }
 
 func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerStackProps) awscdk.Stack {
@@ -48,9 +60,9 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 			Action:  jsii.String("createAutoScalingConfiguration"),
 			Parameters: map[string]interface{}{
 				"AutoScalingConfigurationName": jsii.String(*stack.StackName()),
-				"MaxConcurrency":               jsii.String(strconv.Itoa(props.MaxConcurrency)),
-				"MaxSize":                      jsii.String(strconv.Itoa(props.MaxSize)),
-				"MinSize":                      jsii.String(strconv.Itoa(props.MinSize)),
+				"MaxConcurrency":               jsii.String(strconv.Itoa(props.AutoScalingConfigurationArnProps.MaxConcurrency)),
+				"MaxSize":                      jsii.String(strconv.Itoa(props.AutoScalingConfigurationArnProps.MaxSize)),
+				"MinSize":                      jsii.String(strconv.Itoa(props.AutoScalingConfigurationArnProps.MinSize)),
 			},
 			PhysicalResourceId: customresources.PhysicalResourceId_Of(jsii.String("AutoScalingConfiguration")),
 		},
@@ -69,27 +81,27 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 		SourceConfiguration: &awsapprunner.CfnService_SourceConfigurationProperty{
 			AutoDeploymentsEnabled: jsii.Bool(true),
 			AuthenticationConfiguration: &awsapprunner.CfnService_AuthenticationConfigurationProperty{
-				ConnectionArn: jsii.String(props.connectionArn),
+				ConnectionArn: jsii.String(props.SourceConfigurationProps.ConnectionArn),
 			},
 			CodeRepository: &awsapprunner.CfnService_CodeRepositoryProperty{
-				RepositoryUrl: jsii.String(props.repositoryUrl),
+				RepositoryUrl: jsii.String(props.SourceConfigurationProps.RepositoryUrl),
 				SourceCodeVersion: &awsapprunner.CfnService_SourceCodeVersionProperty{
 					Type:  jsii.String("BRANCH"),
-					Value: jsii.String(props.branchName),
+					Value: jsii.String(props.SourceConfigurationProps.BranchName),
 				},
 				CodeConfiguration: &awsapprunner.CfnService_CodeConfigurationProperty{
 					ConfigurationSource: jsii.String("API"),
 					CodeConfigurationValues: &awsapprunner.CfnService_CodeConfigurationValuesProperty{
 						Runtime:      jsii.String("GO_1"),
-						BuildCommand: jsii.String(props.buildCommand),
-						Port:         jsii.String(strconv.Itoa(props.Port)),
+						BuildCommand: jsii.String(props.SourceConfigurationProps.BuildCommand),
+						Port:         jsii.String(strconv.Itoa(props.SourceConfigurationProps.Port)),
 						RuntimeEnvironmentVariables: []interface{}{
 							&awsapprunner.CfnService_KeyValuePairProperty{
 								Name:  jsii.String("ENV1"),
 								Value: jsii.String("Test"),
 							},
 						},
-						StartCommand: jsii.String(props.startCommand),
+						StartCommand: jsii.String(props.SourceConfigurationProps.StartCommand),
 					},
 				},
 			},
@@ -99,8 +111,8 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 			Protocol: jsii.String("HTTP"),
 		},
 		InstanceConfiguration: &awsapprunner.CfnService_InstanceConfigurationProperty{
-			Cpu:    jsii.String(props.Cpu),
-			Memory: jsii.String(props.Memory),
+			Cpu:    jsii.String(props.InstanceConfigurationProps.Cpu),
+			Memory: jsii.String(props.InstanceConfigurationProps.Memory),
 		},
 		AutoScalingConfigurationArn: autoScalingConfigurationArn,
 	})
@@ -139,7 +151,7 @@ func main() {
 	appRunnerStackInputs := input.NewAppRunnerStackInputs()
 
 	// You must create a connection at the AWS AppRunner console before deploy.
-	connectionArn, err := getConnectionArn(appRunnerStackInputs.ConnectionName, aws.ToString(app.Region()))
+	connectionArn, err := getConnectionArn(appRunnerStackInputs.SourceConfigurationInputs.ConnectionName, aws.ToString(app.Region()))
 	if err != nil {
 		panic(err)
 	}
@@ -148,17 +160,23 @@ func main() {
 		awscdk.StackProps{
 			Env: env(),
 		},
-		appRunnerStackInputs.RepositoryUrl,
-		appRunnerStackInputs.BranchName,
-		appRunnerStackInputs.BuildCommand,
-		appRunnerStackInputs.StartCommand,
-		appRunnerStackInputs.Cpu,
-		appRunnerStackInputs.Memory,
-		appRunnerStackInputs.Port,
-		appRunnerStackInputs.MaxConcurrency,
-		appRunnerStackInputs.MaxSize,
-		appRunnerStackInputs.MinSize,
-		connectionArn,
+		&SourceConfigurationProps{
+			appRunnerStackInputs.SourceConfigurationInputs.RepositoryUrl,
+			appRunnerStackInputs.SourceConfigurationInputs.BranchName,
+			appRunnerStackInputs.SourceConfigurationInputs.BuildCommand,
+			appRunnerStackInputs.SourceConfigurationInputs.StartCommand,
+			appRunnerStackInputs.SourceConfigurationInputs.Port,
+			connectionArn,
+		},
+		&InstanceConfigurationProps{
+			appRunnerStackInputs.InstanceConfigurationInputs.Cpu,
+			appRunnerStackInputs.InstanceConfigurationInputs.Memory,
+		},
+		&AutoScalingConfigurationArnProps{
+			appRunnerStackInputs.AutoScalingConfigurationArnInputs.MaxConcurrency,
+			appRunnerStackInputs.AutoScalingConfigurationArnInputs.MinSize,
+			appRunnerStackInputs.AutoScalingConfigurationArnInputs.MaxSize,
+		},
 	}
 
 	NewAppRunnerStack(app, "AppRunnerStack", appRunnerStackProps)
