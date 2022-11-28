@@ -8,7 +8,9 @@ import (
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapprunner"
-	"github.com/aws/aws-cdk-go/awscdk/v2/customresources"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awss3assets"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/apprunner"
@@ -34,31 +36,38 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 		panic(err)
 	}
 
-	// TODO: Use API rather than custom resource ?(Because needs arn on delete but it is only generated on create)
-	autoScalingConfigurationResult := customresources.NewAwsCustomResource(stack, jsii.String("AutoScalingConfiguration"), &customresources.AwsCustomResourceProps{
-		Policy: customresources.AwsCustomResourcePolicy_FromSdkCalls(&customresources.SdkCallsPolicyOptions{
-			Resources: customresources.AwsCustomResourcePolicy_ANY_RESOURCE(),
-		}),
-		OnCreate: &customresources.AwsSdkCall{
-			Service: jsii.String("AppRunner"),
-			Action:  jsii.String("createAutoScalingConfiguration"),
-			Parameters: map[string]interface{}{
-				"AutoScalingConfigurationName": jsii.String(*stack.StackName()),
-				"MaxConcurrency":               jsii.String(strconv.Itoa(props.AppRunnerStackInputProps.AutoScalingConfigurationArnProps.MaxConcurrency)),
-				"MaxSize":                      jsii.String(strconv.Itoa(props.AppRunnerStackInputProps.AutoScalingConfigurationArnProps.MaxSize)),
-				"MinSize":                      jsii.String(strconv.Itoa(props.AppRunnerStackInputProps.AutoScalingConfigurationArnProps.MinSize)),
+	customResourceLambda := awslambda.NewFunction(stack, jsii.String("CustomResourceLambda"), &awslambda.FunctionProps{
+		Runtime: awslambda.Runtime_GO_1_X(),
+		Handler: jsii.String("main"),
+		Code: awslambda.AssetCode_FromAsset(jsii.String("./"), &awss3assets.AssetOptions{
+			Bundling: &awscdk.BundlingOptions{
+				Image:   awslambda.Runtime_GO_1_X().BundlingImage(),
+				Command: jsii.Strings("bash", "-c", "GOOS=linux GOARCH=amd64 go build -o /asset-output/main custom/custom.go"),
+				User:    jsii.String("root"),
 			},
-			PhysicalResourceId: customresources.PhysicalResourceId_Of(jsii.String("AutoScalingConfiguration")),
+		}),
+		InitialPolicy: &[]awsiam.PolicyStatement{
+			awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+				Actions: &[]*string{
+					jsii.String("apprunner:*AutoScalingConfiguration*"),
+				},
+				Resources: &[]*string{
+					jsii.String("*"),
+				},
+			}),
 		},
-		// OnDelete: &customresources.AwsSdkCall{
-		// 	Service: jsii.String("AppRunner"),
-		// 	Action:  jsii.String("deleteAutoScalingConfiguration"),
-		// 	Parameters: map[string]interface{}{
-		// 		"AutoScalingConfigurationArn": jsii.String(""),
-		// 	},
-		// },
 	})
-	autoScalingConfigurationArn := autoScalingConfigurationResult.GetResponseField(jsii.String("AutoScalingConfiguration.AutoScalingConfigurationArn"))
+	autoScalingConfiguration := awscdk.NewCustomResource(stack, jsii.String("AutoScalingConfiguration"), &awscdk.CustomResourceProps{
+		ResourceType: jsii.String("Custom::AutoScalingConfiguration"),
+		Properties: &map[string]interface{}{
+			"AutoScalingConfigurationName": jsii.String(*stack.StackName()),
+			"MaxConcurrency":               jsii.String(strconv.Itoa(props.AppRunnerStackInputProps.AutoScalingConfigurationArnProps.MaxConcurrency)),
+			"MaxSize":                      jsii.String(strconv.Itoa(props.AppRunnerStackInputProps.AutoScalingConfigurationArnProps.MaxSize)),
+			"MinSize":                      jsii.String(strconv.Itoa(props.AppRunnerStackInputProps.AutoScalingConfigurationArnProps.MinSize)),
+		},
+		ServiceToken: customResourceLambda.FunctionArn(),
+	})
+	autoScalingConfigurationArn := autoScalingConfiguration.GetAttString(jsii.String("AutoScalingConfigurationArn"))
 
 	// There is an L2 construct if it is an alpha version.
 	awsapprunner.NewCfnService(stack, jsii.String("AppRunnerService"), &awsapprunner.CfnServiceProps{

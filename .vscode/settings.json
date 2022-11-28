@@ -6,6 +6,9 @@
         "awsapprunner",
         "apprunner",
         "customresources",
+        "awslambda",
+        "awsiam",
+        "awss",
         "gomod",
     ]
 }
