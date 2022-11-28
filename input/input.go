@@ -29,21 +29,21 @@ type AutoScalingConfigurationArnProps struct {
 func NewAppRunnerStackInputProps() *AppRunnerStackInputProps {
 	return &AppRunnerStackInputProps{
 		&SourceConfigurationProps{
-			"https://github.com/go-to-k/go-cdk-go-managed-apprunner",
-			"master",
-			"go install",
-			"go run app/main.go",
-			8080,
-			"AppRunnerConnection",
+			RepositoryUrl:  "https://github.com/go-to-k/go-cdk-go-managed-apprunner",
+			BranchName:     "master",
+			BuildCommand:   "go install",
+			StartCommand:   "go run app/main.go",
+			Port:           8080,
+			ConnectionName: "AppRunnerConnection",
 		},
 		&InstanceConfigurationProps{
-			"1 vCPU",
-			"2 GB",
+			Cpu:    "1 vCPU",
+			Memory: "2 GB",
 		},
 		&AutoScalingConfigurationArnProps{
-			50,
-			3,
-			1,
+			MaxConcurrency: 50,
+			MaxSize:        3,
+			MinSize:        1,
 		},
 	}
 }
