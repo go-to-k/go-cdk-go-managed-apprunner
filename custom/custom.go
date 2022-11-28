@@ -24,6 +24,7 @@ func HandleRequest(ctx context.Context, event cfn.Event) (physicalResourceID str
 	if err != nil {
 		return "", nil, err
 	}
+
 	client := apprunner.NewFromConfig(cfg)
 
 	if requestType == "Create" {
@@ -33,6 +34,7 @@ func HandleRequest(ctx context.Context, event cfn.Event) (physicalResourceID str
 			MaxSize:                      aws.Int32(int32(maxSize)),
 			MinSize:                      aws.Int32(int32(minSize)),
 		}
+
 		output, err := client.CreateAutoScalingConfiguration(context.TODO(), createInput)
 		if err != nil {
 			return "", nil, err
@@ -44,16 +46,19 @@ func HandleRequest(ctx context.Context, event cfn.Event) (physicalResourceID str
 		listInput := &apprunner.ListAutoScalingConfigurationsInput{
 			AutoScalingConfigurationName: aws.String(autoScalingConfigurationName),
 		}
+
 		output, err := client.ListAutoScalingConfigurations(context.TODO(), listInput)
 		if err != nil {
 			return "", nil, err
 		}
+
 		if len(output.AutoScalingConfigurationSummaryList) > 0 {
 			autoScalingConfigurationArn := output.AutoScalingConfigurationSummaryList[0].AutoScalingConfigurationArn
 
 			deleteInput := &apprunner.DeleteAutoScalingConfigurationInput{
 				AutoScalingConfigurationArn: autoScalingConfigurationArn,
 			}
+
 			_, err := client.DeleteAutoScalingConfiguration(context.TODO(), deleteInput)
 			if err != nil {
 				return "", nil, err
@@ -62,6 +67,7 @@ func HandleRequest(ctx context.Context, event cfn.Event) (physicalResourceID str
 	}
 
 	physicalResourceID = "AutoScalingConfiguration"
+
 	return
 }
 
