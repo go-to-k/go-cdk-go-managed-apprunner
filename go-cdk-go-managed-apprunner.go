@@ -30,12 +30,6 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 	}
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
-	// You must create a connection at the AWS AppRunner console before deploy.
-	connectionArn, err := getConnectionArn(props.AppRunnerStackInputProps.SourceConfigurationProps.ConnectionName, *props.Env.Region)
-	if err != nil {
-		panic(err)
-	}
-
 	customResourceLambda := awslambda.NewFunction(stack, jsii.String("CustomResourceLambda"), &awslambda.FunctionProps{
 		Runtime: awslambda.Runtime_GO_1_X(),
 		Handler: jsii.String("main"),
@@ -57,6 +51,7 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 			}),
 		},
 	})
+
 	autoScalingConfiguration := awscdk.NewCustomResource(stack, jsii.String("AutoScalingConfiguration"), &awscdk.CustomResourceProps{
 		ResourceType: jsii.String("Custom::AutoScalingConfiguration"),
 		Properties: &map[string]interface{}{
@@ -68,6 +63,12 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 		ServiceToken: customResourceLambda.FunctionArn(),
 	})
 	autoScalingConfigurationArn := autoScalingConfiguration.GetAttString(jsii.String("AutoScalingConfigurationArn"))
+
+	// You must create a connection at the AWS AppRunner console before deploy.
+	connectionArn, err := getConnectionArn(props.AppRunnerStackInputProps.SourceConfigurationProps.ConnectionName, *props.Env.Region)
+	if err != nil {
+		panic(err)
+	}
 
 	// There is an L2 construct if it is an alpha version.
 	awsapprunner.NewCfnService(stack, jsii.String("AppRunnerService"), &awsapprunner.CfnServiceProps{
