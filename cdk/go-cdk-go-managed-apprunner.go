@@ -92,13 +92,16 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 		L2 Construct(alpha version) for VPC Connector
 	*/
 	securityGroupForVpcConnectorL2 := awsec2.NewSecurityGroup(stack, jsii.String("SecurityGroupForVpcConnectorL2"), &awsec2.SecurityGroupProps{
-		Vpc: awsec2.Vpc_FromLookup(stack, jsii.String("VPC"), &awsec2.VpcLookupOptions{
+		Vpc: awsec2.Vpc_FromLookup(stack, jsii.String("VPCForSecurityGroupForVpcConnectorL2"), &awsec2.VpcLookupOptions{
 			VpcId: jsii.String(props.AppRunnerStackInputProps.VpcConnectorProps.VpcID),
 		}),
 		Description: jsii.String("for AppRunner VPC Connector L2"),
 	})
 
 	vpcConnectorL2 := apprunner.NewVpcConnector(stack, jsii.String("VpcConnectorL2"), &apprunner.VpcConnectorProps{
+		Vpc: awsec2.Vpc_FromLookup(stack, jsii.String("VPCForVpcConnectorL2"), &awsec2.VpcLookupOptions{
+			VpcId: jsii.String(props.AppRunnerStackInputProps.VpcConnectorProps.VpcID),
+		}),
 		SecurityGroups: &[]awsec2.ISecurityGroup{securityGroupForVpcConnectorL2},
 		VpcSubnets: &awsec2.SubnetSelection{
 			Subnets: &[]awsec2.ISubnet{
@@ -112,7 +115,7 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 		L1 Construct for VPC Connector
 	*/
 	securityGroupForVpcConnectorL1 := awsec2.NewSecurityGroup(stack, jsii.String("SecurityGroupForVpcConnectorL1"), &awsec2.SecurityGroupProps{
-		Vpc: awsec2.Vpc_FromLookup(stack, jsii.String("VPC"), &awsec2.VpcLookupOptions{
+		Vpc: awsec2.Vpc_FromLookup(stack, jsii.String("VPCForVpcConnectorL1"), &awsec2.VpcLookupOptions{
 			VpcId: jsii.String(props.AppRunnerStackInputProps.VpcConnectorProps.VpcID),
 		}),
 		Description: jsii.String("for AppRunner VPC Connector L1"),
@@ -246,7 +249,7 @@ func main() {
 
 	appRunnerStackProps := &AppRunnerStackProps{
 		awscdk.StackProps{
-			Env: env(),
+			Env: env(appRunnerStackInputProps.StackEnv.Account, appRunnerStackInputProps.StackEnv.Region),
 		},
 		appRunnerStackInputProps,
 	}
@@ -256,8 +259,9 @@ func main() {
 	app.Synth(nil)
 }
 
-func env() *awscdk.Environment {
+func env(account string, region string) *awscdk.Environment {
 	return &awscdk.Environment{
-		Region: jsii.String("ap-northeast-1"),
+		Account: jsii.String(account),
+		Region:  jsii.String(region),
 	}
 }
