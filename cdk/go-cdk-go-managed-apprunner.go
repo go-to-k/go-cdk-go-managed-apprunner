@@ -249,7 +249,10 @@ func main() {
 
 	appRunnerStackProps := &AppRunnerStackProps{
 		awscdk.StackProps{
-			Env: env(appRunnerStackInputProps.StackEnv.Account, appRunnerStackInputProps.StackEnv.Region),
+			Env: env(
+				appRunnerStackInputProps.StackEnv.Account,
+				appRunnerStackInputProps.StackEnv.Region,
+			),
 		},
 		appRunnerStackInputProps,
 	}
