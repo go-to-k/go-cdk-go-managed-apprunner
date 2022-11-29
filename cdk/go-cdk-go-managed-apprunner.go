@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"go-cdk-go-managed-apprunner/input"
+	"go-cdk-go-managed-apprunner/cdk/input"
 	"strconv"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
@@ -33,7 +33,7 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 	customResourceLambda := awslambda.NewFunction(stack, jsii.String("CustomResourceLambda"), &awslambda.FunctionProps{
 		Runtime: awslambda.Runtime_GO_1_X(),
 		Handler: jsii.String("main"),
-		Code: awslambda.AssetCode_FromAsset(jsii.String("./"), &awss3assets.AssetOptions{
+		Code: awslambda.AssetCode_FromAsset(jsii.String("../"), &awss3assets.AssetOptions{
 			Bundling: &awscdk.BundlingOptions{
 				Image:   awslambda.Runtime_GO_1_X().BundlingImage(),
 				Command: jsii.Strings("bash", "-c", "GOOS=linux GOARCH=amd64 go build -o /asset-output/main custom/custom.go"),

@@ -31,7 +31,7 @@ func NewAppRunnerStackInputProps() *AppRunnerStackInputProps {
 		&SourceConfigurationProps{
 			RepositoryUrl:  "https://github.com/go-to-k/go-cdk-go-managed-apprunner",
 			BranchName:     "master",
-			BuildCommand:   "go install",
+			BuildCommand:   "go install ./app/...",
 			StartCommand:   "go run app/main.go",
 			Port:           8080,
 			ConnectionName: "AppRunnerConnection",

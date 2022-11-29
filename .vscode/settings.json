@@ -1,4 +1,15 @@
 {
+	"go.autocompleteUnimportedPackages": true,
+    "go.buildOnSave": "off",
+	"go.coverageOptions": "showUncoveredCodeOnly",
+	"go.coverOnSave": true,
+	"go.coverageDecorator": {
+		"type": "gutter"
+	},
+	"go.formatTool": "goimports",
+	"go.gotoSymbol.includeGoroot": true,
+	"go.lintTool": "golangci-lint",
+	"go.testOnSave": false,
     "cSpell.words": [
         "awscdk",
         "sprops",
