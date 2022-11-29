@@ -1,7 +1,5 @@
 github.com/Masterminds/semver/v3 v3.1.1 h1:hLg3sBzpNErnxhQtUy/mmLR2I9foDujNK030IGemrRc=
 github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
-github.com/aws/aws-cdk-go/awscdk/v2 v2.52.0 h1:2r+DwGHtDf5mG6chQKICcD3sfIvNTU5w5YLj4T0RVuE=
-github.com/aws/aws-cdk-go/awscdk/v2 v2.52.0/go.mod h1:oNPG1TfQIQgTGEBHqoi9rNZzzSoFfC9kYk5V0h5d3/M=
 github.com/aws/aws-cdk-go/awscdk/v2 v2.53.0 h1:S9ssJ4/pQSn97bIQdqggB+1AVH6YWTKDan+uiv3BK/4=
 github.com/aws/aws-cdk-go/awscdk/v2 v2.53.0/go.mod h1:oNPG1TfQIQgTGEBHqoi9rNZzzSoFfC9kYk5V0h5d3/M=
 github.com/aws/aws-cdk-go/awscdkapprunneralpha/v2 v2.53.0-alpha.0 h1:gVrOkpde9fvhau61cQOsYbR37+7ePZwffUBiaXKW6TQ=
