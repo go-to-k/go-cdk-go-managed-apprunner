@@ -8,12 +8,14 @@ import (
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapprunner"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsec2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awss3assets"
+	apprunner "github.com/aws/aws-cdk-go/awscdkapprunneralpha/v2"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/apprunner"
+	apprunnerClient "github.com/aws/aws-sdk-go-v2/service/apprunner"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 )
@@ -30,6 +32,9 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 	}
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
+	/*
+		Custom Resource Lambda for creation of AutoScalingConfiguration
+	*/
 	customResourceLambda := awslambda.NewFunction(stack, jsii.String("CustomResourceLambda"), &awslambda.FunctionProps{
 		Runtime: awslambda.Runtime_GO_1_X(),
 		Handler: jsii.String("main"),
@@ -52,6 +57,9 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 		},
 	})
 
+	/*
+		AutoScalingConfiguration
+	*/
 	autoScalingConfiguration := awscdk.NewCustomResource(stack, jsii.String("AutoScalingConfiguration"), &awscdk.CustomResourceProps{
 		ResourceType: jsii.String("Custom::AutoScalingConfiguration"),
 		Properties: &map[string]interface{}{
@@ -64,14 +72,99 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 	})
 	autoScalingConfigurationArn := autoScalingConfiguration.GetAttString(jsii.String("AutoScalingConfigurationArn"))
 
-	// You must create a connection at the AWS AppRunner console before deploy.
+	/*
+		ConnectionArn for GitHub Connection
+		(You must create a connection before deploy.)
+	*/
 	connectionArn, err := getConnectionArn(props.AppRunnerStackInputProps.SourceConfigurationProps.ConnectionName, *props.Env.Region)
 	if err != nil {
 		panic(err)
 	}
 
-	// There is an L2 construct if it is an alpha version.
-	awsapprunner.NewCfnService(stack, jsii.String("AppRunnerService"), &awsapprunner.CfnServiceProps{
+	/*
+		InstanceRole for AppRunner Service
+	*/
+	appRunnerInstanceRole := awsiam.NewRole(stack, jsii.String("AppRunnerInstanceRole"), &awsiam.RoleProps{
+		AssumedBy: awsiam.NewServicePrincipal(jsii.String("tasks.apprunner.amazonaws.com"), nil),
+	})
+
+	/*
+		L2 Construct(alpha version) for VPC Connector
+	*/
+	securityGroupForVpcConnectorL2 := awsec2.NewSecurityGroup(stack, jsii.String("SecurityGroupForVpcConnectorL2"), &awsec2.SecurityGroupProps{
+		Vpc: awsec2.Vpc_FromLookup(stack, jsii.String("VPC"), &awsec2.VpcLookupOptions{
+			VpcId: jsii.String(props.AppRunnerStackInputProps.VpcConnectorProps.VpcID),
+		}),
+		Description: jsii.String("for AppRunner VPC Connector L2"),
+	})
+
+	vpcConnectorL2 := apprunner.NewVpcConnector(stack, jsii.String("VpcConnectorL2"), &apprunner.VpcConnectorProps{
+		SecurityGroups: &[]awsec2.ISecurityGroup{securityGroupForVpcConnectorL2},
+		VpcSubnets: &awsec2.SubnetSelection{
+			Subnets: &[]awsec2.ISubnet{
+				awsec2.Subnet_FromSubnetId(stack, jsii.String("Subnet1"), jsii.String(props.AppRunnerStackInputProps.VpcConnectorProps.SubnetID1)),
+				awsec2.Subnet_FromSubnetId(stack, jsii.String("Subnet2"), jsii.String(props.AppRunnerStackInputProps.VpcConnectorProps.SubnetID2)),
+			},
+		},
+	})
+
+	/*
+		L1 Construct for VPC Connector
+	*/
+	securityGroupForVpcConnectorL1 := awsec2.NewSecurityGroup(stack, jsii.String("SecurityGroupForVpcConnectorL1"), &awsec2.SecurityGroupProps{
+		Vpc: awsec2.Vpc_FromLookup(stack, jsii.String("VPC"), &awsec2.VpcLookupOptions{
+			VpcId: jsii.String(props.AppRunnerStackInputProps.VpcConnectorProps.VpcID),
+		}),
+		Description: jsii.String("for AppRunner VPC Connector L1"),
+	})
+
+	vpcConnectorL1 := awsapprunner.NewCfnVpcConnector(stack, jsii.String("VpcConnectorL1"), &awsapprunner.CfnVpcConnectorProps{
+		SecurityGroups: jsii.Strings(*securityGroupForVpcConnectorL1.SecurityGroupId()),
+		Subnets: jsii.Strings(
+			props.AppRunnerStackInputProps.VpcConnectorProps.SubnetID1,
+			props.AppRunnerStackInputProps.VpcConnectorProps.SubnetID2,
+		),
+	})
+
+	/*
+		L2 Construct(alpha version) for AppRunner Service
+	*/
+	apprunnerServiceL2 := apprunner.NewService(stack, jsii.String("AppRunnerServiceL2"), &apprunner.ServiceProps{
+		InstanceRole: appRunnerInstanceRole,
+		Source: apprunner.Source_FromGitHub(&apprunner.GithubRepositoryProps{
+			RepositoryUrl:       jsii.String(props.AppRunnerStackInputProps.SourceConfigurationProps.RepositoryUrl),
+			Branch:              jsii.String(props.AppRunnerStackInputProps.SourceConfigurationProps.BranchName),
+			ConfigurationSource: apprunner.ConfigurationSourceType_API,
+			CodeConfigurationValues: &apprunner.CodeConfigurationValues{
+				Runtime:      apprunner.Runtime_GO_1(),
+				Port:         jsii.String(strconv.Itoa(props.AppRunnerStackInputProps.SourceConfigurationProps.Port)),
+				StartCommand: jsii.String(props.AppRunnerStackInputProps.SourceConfigurationProps.StartCommand),
+				BuildCommand: jsii.String(props.AppRunnerStackInputProps.SourceConfigurationProps.BuildCommand),
+				Environment: &map[string]*string{
+					"ENV1": jsii.String("Test"),
+				},
+			},
+			Connection: apprunner.GitHubConnection_FromConnectionArn(jsii.String(connectionArn)),
+		}),
+		Cpu:          apprunner.Cpu_Of(jsii.String(props.AppRunnerStackInputProps.InstanceConfigurationProps.Cpu)),
+		Memory:       apprunner.Memory_Of(jsii.String(props.AppRunnerStackInputProps.InstanceConfigurationProps.Memory)),
+		VpcConnector: vpcConnectorL2,
+	})
+
+	var cfnAppRunner awsapprunner.CfnService
+	//lint:ignore SA1019 This is deprecated, but Go does not support escape hatches yet.
+	jsii.Get(apprunnerServiceL2.Node(), "defaultChild", &cfnAppRunner)
+	cfnAppRunner.SetAutoScalingConfigurationArn(autoScalingConfigurationArn)
+	cfnAppRunner.SetHealthCheckConfiguration(&awsapprunner.CfnService_HealthCheckConfigurationProperty{
+		Path:     jsii.String("/"),
+		Protocol: jsii.String("HTTP"),
+	})
+	cfnAppRunner.AddPropertyOverride(jsii.String("SourceConfiguration.AutoDeploymentsEnabled"), "true")
+
+	/*
+		L1 Construct for AppRunner Service
+	*/
+	awsapprunner.NewCfnService(stack, jsii.String("AppRunnerServiceL1"), &awsapprunner.CfnServiceProps{
 		SourceConfiguration: &awsapprunner.CfnService_SourceConfigurationProperty{
 			AutoDeploymentsEnabled: jsii.Bool(true),
 			AuthenticationConfiguration: &awsapprunner.CfnService_AuthenticationConfigurationProperty{
@@ -87,15 +180,15 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 					ConfigurationSource: jsii.String("API"),
 					CodeConfigurationValues: &awsapprunner.CfnService_CodeConfigurationValuesProperty{
 						Runtime:      jsii.String("GO_1"),
-						BuildCommand: jsii.String(props.AppRunnerStackInputProps.SourceConfigurationProps.BuildCommand),
 						Port:         jsii.String(strconv.Itoa(props.AppRunnerStackInputProps.SourceConfigurationProps.Port)),
+						StartCommand: jsii.String(props.AppRunnerStackInputProps.SourceConfigurationProps.StartCommand),
+						BuildCommand: jsii.String(props.AppRunnerStackInputProps.SourceConfigurationProps.BuildCommand),
 						RuntimeEnvironmentVariables: []interface{}{
 							&awsapprunner.CfnService_KeyValuePairProperty{
 								Name:  jsii.String("ENV1"),
 								Value: jsii.String("Test"),
 							},
 						},
-						StartCommand: jsii.String(props.AppRunnerStackInputProps.SourceConfigurationProps.StartCommand),
 					},
 				},
 			},
@@ -105,8 +198,15 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 			Protocol: jsii.String("HTTP"),
 		},
 		InstanceConfiguration: &awsapprunner.CfnService_InstanceConfigurationProperty{
-			Cpu:    jsii.String(props.AppRunnerStackInputProps.InstanceConfigurationProps.Cpu),
-			Memory: jsii.String(props.AppRunnerStackInputProps.InstanceConfigurationProps.Memory),
+			Cpu:             jsii.String(props.AppRunnerStackInputProps.InstanceConfigurationProps.Cpu),
+			Memory:          jsii.String(props.AppRunnerStackInputProps.InstanceConfigurationProps.Memory),
+			InstanceRoleArn: appRunnerInstanceRole.RoleArn(),
+		},
+		NetworkConfiguration: &awsapprunner.CfnService_NetworkConfigurationProperty{
+			EgressConfiguration: awsapprunner.CfnService_EgressConfigurationProperty{
+				EgressType:      jsii.String("VPC"),
+				VpcConnectorArn: vpcConnectorL1.AttrVpcConnectorArn(),
+			},
 		},
 		AutoScalingConfigurationArn: autoScalingConfigurationArn,
 	})
@@ -120,9 +220,9 @@ func getConnectionArn(connectionName string, region string) (string, error) {
 		return "", err
 	}
 
-	client := apprunner.NewFromConfig(cfg)
+	client := apprunnerClient.NewFromConfig(cfg)
 
-	input := &apprunner.ListConnectionsInput{
+	input := &apprunnerClient.ListConnectionsInput{
 		ConnectionName: aws.String(connectionName),
 	}
 
@@ -136,7 +236,7 @@ func getConnectionArn(connectionName string, region string) (string, error) {
 		return connectionArn, nil
 	}
 
-	return "", fmt.Errorf("connection not found.")
+	return "", fmt.Errorf("ConnectionNotFound")
 }
 
 func main() {

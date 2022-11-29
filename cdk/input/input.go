@@ -4,6 +4,7 @@ type AppRunnerStackInputProps struct {
 	SourceConfigurationProps         *SourceConfigurationProps
 	InstanceConfigurationProps       *InstanceConfigurationProps
 	AutoScalingConfigurationArnProps *AutoScalingConfigurationArnProps
+	VpcConnectorProps                *VpcConnectorProps
 }
 
 type SourceConfigurationProps struct {
@@ -26,6 +27,12 @@ type AutoScalingConfigurationArnProps struct {
 	MinSize        int
 }
 
+type VpcConnectorProps struct {
+	VpcID     string
+	SubnetID1 string
+	SubnetID2 string
+}
+
 func NewAppRunnerStackInputProps() *AppRunnerStackInputProps {
 	return &AppRunnerStackInputProps{
 		&SourceConfigurationProps{
@@ -44,6 +51,11 @@ func NewAppRunnerStackInputProps() *AppRunnerStackInputProps {
 			MaxConcurrency: 50,
 			MaxSize:        3,
 			MinSize:        1,
+		},
+		&VpcConnectorProps{
+			VpcID:     "vpc-xxxxxxxxxxxxxxxxxx",
+			SubnetID1: "subnet-xxxxxxxxxxxxxxxxxx",
+			SubnetID2: "subnet-xxxxxxxxxxxxxxxxxx",
 		},
 	}
 }

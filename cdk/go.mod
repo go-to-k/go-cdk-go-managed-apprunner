@@ -3,7 +3,7 @@ module go-cdk-go-managed-apprunner/cdk
 go 1.18
 
 require (
-	github.com/aws/aws-cdk-go/awscdk/v2 v2.52.0
+	github.com/aws/aws-cdk-go/awscdk/v2 v2.53.0
 	github.com/aws/aws-sdk-go-v2 v1.17.1
 	github.com/aws/aws-sdk-go-v2/config v1.18.3
 	github.com/aws/aws-sdk-go-v2/service/apprunner v1.15.0
@@ -13,6 +13,7 @@ require (
 
 require (
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
+	github.com/aws/aws-cdk-go/awscdkapprunneralpha/v2 v2.53.0-alpha.0 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.3 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.19 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.25 // indirect

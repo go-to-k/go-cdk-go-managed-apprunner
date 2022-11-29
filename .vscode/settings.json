@@ -8,7 +8,7 @@
 	},
 	"go.formatTool": "goimports",
 	"go.gotoSymbol.includeGoroot": true,
-	"go.lintTool": "golangci-lint",
+	"go.lintTool": "staticcheck",
 	"go.testOnSave": false,
     "cSpell.words": [
         "awscdk",
@@ -20,6 +20,8 @@
         "awslambda",
         "awsiam",
         "awss",
+        "awsec",
+        "awscdkapprunneralpha",
         "gomod",
     ]
 }
