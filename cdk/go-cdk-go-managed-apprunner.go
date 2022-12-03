@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"go-cdk-go-managed-apprunner/cdk/input"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapprunner"
@@ -76,7 +79,7 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 		ConnectionArn for GitHub Connection
 		(You must create a connection before deploy.)
 	*/
-	connectionArn, err := getConnectionArn(props.AppRunnerStackInputProps.SourceConfigurationProps.ConnectionName, *props.Env.Region)
+	connectionArn, err := createConnection(props.AppRunnerStackInputProps.SourceConfigurationProps.ConnectionName, *props.Env.Region)
 	if err != nil {
 		panic(err)
 	}
@@ -217,7 +220,7 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 	return stack
 }
 
-func getConnectionArn(connectionName string, region string) (string, error) {
+func createConnection(connectionName string, region string) (string, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
 	if err != nil {
 		return "", err
@@ -225,21 +228,71 @@ func getConnectionArn(connectionName string, region string) (string, error) {
 
 	client := apprunnerClient.NewFromConfig(cfg)
 
-	input := &apprunnerClient.ListConnectionsInput{
+	listConnectionsInput := &apprunnerClient.ListConnectionsInput{
 		ConnectionName: aws.String(connectionName),
 	}
 
-	output, err := client.ListConnections(context.TODO(), input)
+	listConnectionsOutput, err := client.ListConnections(context.TODO(), listConnectionsInput)
 	if err != nil {
 		return "", err
 	}
 
-	if len(output.ConnectionSummaryList) > 0 {
-		connectionArn := aws.ToString(output.ConnectionSummaryList[0].ConnectionArn)
+	// If there is already a connection, return the connection ARN
+	if len(listConnectionsOutput.ConnectionSummaryList) > 0 {
+		if listConnectionsOutput.ConnectionSummaryList[0].Status == "PENDING_HANDSHAKE" {
+			confirmCompleteHandshake()
+		}
+		connectionArn := aws.ToString(listConnectionsOutput.ConnectionSummaryList[0].ConnectionArn)
 		return connectionArn, nil
 	}
 
-	return "", fmt.Errorf("ConnectionNotFound")
+	// Otherwise, create a connection
+	createConnectionInput := &apprunnerClient.CreateConnectionInput{
+		ConnectionName: aws.String(connectionName),
+		ProviderType:   "GITHUB",
+	}
+
+	createConnectionOutput, err := client.CreateConnection(context.TODO(), createConnectionInput)
+	if err != nil {
+		return "", err
+	}
+
+	confirmCompleteHandshake()
+	return *createConnectionOutput.Connection.ConnectionArn, nil
+}
+
+func confirmCompleteHandshake() {
+	for {
+		fmt.Println("Now, click the \"Complete handshake\" button at the AWS App Runner console.")
+		if ok := getYesNo("Did you click the button?"); ok {
+			return
+		}
+		continue
+	}
+}
+
+func getYesNo(label string) bool {
+	choices := "Y/n"
+	r := bufio.NewReader(os.Stdin)
+	var s string
+
+	for {
+		fmt.Fprintf(os.Stderr, "%s (%s) ", label, choices)
+		s, _ = r.ReadString('\n')
+		fmt.Fprintln(os.Stderr)
+
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return true
+		}
+		s = strings.ToLower(s)
+		if s == "y" || s == "yes" {
+			return true
+		}
+		if s == "n" || s == "no" {
+			return false
+		}
+	}
 }
 
 func main() {
