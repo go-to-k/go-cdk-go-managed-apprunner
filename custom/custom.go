@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strconv"
 
@@ -12,13 +13,21 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/apprunner"
 )
 
+type InputProps struct {
+	autoScalingConfigurationName string
+	maxConcurrency               int
+	maxSize                      int
+	minSize                      int
+}
+
 func HandleRequest(ctx context.Context, event cfn.Event) (physicalResourceID string, data map[string]interface{}, err error) {
 	requestType := event.RequestType
+	data = make(map[string]interface{})
 
-	autoScalingConfigurationName, _ := event.ResourceProperties["AutoScalingConfigurationName"].(string)
-	maxConcurrency, _ := strconv.Atoi(event.ResourceProperties["MaxConcurrency"].(string))
-	maxSize, _ := strconv.Atoi(event.ResourceProperties["MaxSize"].(string))
-	minSize, _ := strconv.Atoi(event.ResourceProperties["MinSize"].(string))
+	inputProps, err := convertInputParameters(event.ResourceProperties)
+	if err != nil {
+		return "", nil, err
+	}
 
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(os.Getenv("AWS_REGION")))
 	if err != nil {
@@ -29,10 +38,10 @@ func HandleRequest(ctx context.Context, event cfn.Event) (physicalResourceID str
 
 	if requestType == "Create" {
 		createInput := &apprunner.CreateAutoScalingConfigurationInput{
-			AutoScalingConfigurationName: aws.String(autoScalingConfigurationName),
-			MaxConcurrency:               aws.Int32(int32(maxConcurrency)),
-			MaxSize:                      aws.Int32(int32(maxSize)),
-			MinSize:                      aws.Int32(int32(minSize)),
+			AutoScalingConfigurationName: aws.String(inputProps.autoScalingConfigurationName),
+			MaxConcurrency:               aws.Int32(int32(inputProps.maxConcurrency)),
+			MaxSize:                      aws.Int32(int32(inputProps.maxSize)),
+			MinSize:                      aws.Int32(int32(inputProps.minSize)),
 		}
 
 		output, err := client.CreateAutoScalingConfiguration(context.TODO(), createInput)
@@ -40,11 +49,10 @@ func HandleRequest(ctx context.Context, event cfn.Event) (physicalResourceID str
 			return "", nil, err
 		}
 
-		data = make(map[string]interface{})
 		data["AutoScalingConfigurationArn"] = output.AutoScalingConfiguration.AutoScalingConfigurationArn
 	} else if requestType == "Delete" {
 		listInput := &apprunner.ListAutoScalingConfigurationsInput{
-			AutoScalingConfigurationName: aws.String(autoScalingConfigurationName),
+			AutoScalingConfigurationName: aws.String(inputProps.autoScalingConfigurationName),
 		}
 
 		output, err := client.ListAutoScalingConfigurations(context.TODO(), listInput)
@@ -69,6 +77,47 @@ func HandleRequest(ctx context.Context, event cfn.Event) (physicalResourceID str
 	physicalResourceID = "AutoScalingConfiguration"
 
 	return
+}
+
+func convertInputParameters(resourceProperties map[string]interface{}) (*InputProps, error) {
+	autoScalingConfigurationName, ok := resourceProperties["AutoScalingConfigurationName"].(string)
+	if !ok {
+		return nil, fmt.Errorf("AutoScalingConfigurationName Assertion Error: %v", resourceProperties["AutoScaling"])
+	}
+
+	maxConcurrencyInput, ok := resourceProperties["MaxConcurrency"].(string)
+	if !ok {
+		return nil, fmt.Errorf("MaxConcurrency Assertion Error: %v", resourceProperties["MaxConcurrency"])
+	}
+	maxConcurrency, err := strconv.Atoi(maxConcurrencyInput)
+	if err != nil {
+		return nil, fmt.Errorf("MaxConcurrency Convert Error: %v", maxConcurrency)
+	}
+
+	maxSizeInput, ok := resourceProperties["MaxSize"].(string)
+	if !ok {
+		return nil, fmt.Errorf("MaxSize Assertion Error: %v", resourceProperties["MaxSize"])
+	}
+	maxSize, err := strconv.Atoi(maxSizeInput)
+	if err != nil {
+		return nil, fmt.Errorf("MaxSize Convert Error: %v", maxSize)
+	}
+
+	minSizeInput, ok := resourceProperties["MinSize"].(string)
+	if !ok {
+		return nil, fmt.Errorf("MinSize Assertion Error: %v", resourceProperties["MinSize"])
+	}
+	minSize, err := strconv.Atoi(minSizeInput)
+	if err != nil {
+		return nil, fmt.Errorf("MinSize Convert Error: %v", minSize)
+	}
+
+	return &InputProps{
+		autoScalingConfigurationName: autoScalingConfigurationName,
+		maxConcurrency:               maxConcurrency,
+		maxSize:                      maxSize,
+		minSize:                      minSize,
+	}, nil
 }
 
 func main() {

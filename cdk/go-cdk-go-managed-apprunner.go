@@ -144,7 +144,7 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 				StartCommand: jsii.String(props.AppRunnerStackInputProps.SourceConfigurationProps.StartCommand),
 				BuildCommand: jsii.String(props.AppRunnerStackInputProps.SourceConfigurationProps.BuildCommand),
 				Environment: &map[string]*string{
-					"ENV1": jsii.String("Test"),
+					"ENV1": jsii.String("L2"),
 				},
 			},
 			Connection: apprunner.GitHubConnection_FromConnectionArn(jsii.String(connectionArn)),
@@ -189,7 +189,7 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 						RuntimeEnvironmentVariables: []interface{}{
 							&awsapprunner.CfnService_KeyValuePairProperty{
 								Name:  jsii.String("ENV1"),
-								Value: jsii.String("Test"),
+								Value: jsii.String("L1"),
 							},
 						},
 					},
