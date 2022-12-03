@@ -77,7 +77,6 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 
 	/*
 		ConnectionArn for GitHub Connection
-		(You must create a connection before deploy.)
 	*/
 	connectionArn, err := createConnection(props.AppRunnerStackInputProps.SourceConfigurationProps.ConnectionName, *props.Env.Region)
 	if err != nil {
