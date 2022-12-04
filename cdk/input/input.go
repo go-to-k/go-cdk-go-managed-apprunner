@@ -42,7 +42,7 @@ type AutoScalingConfigurationArnProps struct {
 func NewAppRunnerStackInputProps() *AppRunnerStackInputProps {
 	return &AppRunnerStackInputProps{
 		StackEnv: &StackEnv{
-			Account: "12345678912", // Your Account ID
+			Account: "123456789012", // Your Account ID
 			Region:  "ap-northeast-1",
 		},
 		VpcConnectorProps: &VpcConnectorProps{
