@@ -1,0 +1,6 @@
+deploy:
+	cdk deploy
+test:
+	go test ./...
+test-upd:
+	UPDATE_SNAPSHOTS=true go test ./...
