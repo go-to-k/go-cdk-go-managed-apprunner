@@ -10,7 +10,7 @@ import (
 	"github.com/bradleyjkemp/cupaloy/v2"
 )
 
-func TestGoCdkGoApprunnerStack(t *testing.T) {
+func TestAppRunnerStack(t *testing.T) {
 	// GIVEN
 	app := awscdk.NewApp(nil)
 
