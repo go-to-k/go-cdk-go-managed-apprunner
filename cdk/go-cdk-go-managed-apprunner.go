@@ -295,6 +295,8 @@ func getYesNo(label string) bool {
 }
 
 func main() {
+	defer jsii.Close()
+
 	app := awscdk.NewApp(nil)
 
 	appRunnerStackInputProps := input.NewAppRunnerStackInputProps()
