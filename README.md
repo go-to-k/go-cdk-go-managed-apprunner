@@ -1,14 +1,3 @@
-# Welcome to your CDK Go project!
+# go-cdk-go-managed-apprunner
 
-This is a blank project for CDK development with Go.
-
-**NOTICE**: Go support is still in Developer Preview. This implies that APIs may
-change while we address early feedback from the community. We would love to hear
-about your experience through GitHub issues.
-
-## Useful commands
-
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk synth`       emits the synthesized CloudFormation template
- * `go test`         run unit tests
+[GoマネージドなApp RunnerをGo版CDKで構築する](https://go-to-k.hatenablog.com/entry/go-cdk-go-managed-apprunner)
