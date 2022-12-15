@@ -311,7 +311,7 @@ func main() {
 		appRunnerStackInputProps,
 	}
 
-	NewAppRunnerStack(app, "AppRunnerStack", appRunnerStackProps)
+	NewAppRunnerStack(app, "AppRunnerGoStack", appRunnerStackProps)
 
 	app.Synth(nil)
 }
