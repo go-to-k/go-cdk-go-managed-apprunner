@@ -48,13 +48,24 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 				User:    jsii.String("root"),
 			},
 		}),
+		Timeout: awscdk.Duration_Seconds(jsii.Number(900)),
 		InitialPolicy: &[]awsiam.PolicyStatement{
 			awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
 				Actions: &[]*string{
 					jsii.String("apprunner:*AutoScalingConfiguration*"),
+					jsii.String("apprunner:UpdateService"),
+					jsii.String("apprunner:ListOperations"),
 				},
 				Resources: &[]*string{
 					jsii.String("*"),
+				},
+			}),
+			awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+				Actions: &[]*string{
+					jsii.String("cloudformation:DescribeStacks"),
+				},
+				Resources: &[]*string{
+					stack.StackId(),
 				},
 			}),
 		},
@@ -66,10 +77,11 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 	autoScalingConfiguration := awscdk.NewCustomResource(stack, jsii.String("AutoScalingConfiguration"), &awscdk.CustomResourceProps{
 		ResourceType: jsii.String("Custom::AutoScalingConfiguration"),
 		Properties: &map[string]interface{}{
-			"AutoScalingConfigurationName": jsii.String(*stack.StackName()),
-			"MaxConcurrency":               jsii.String(strconv.Itoa(props.AppRunnerStackInputProps.AutoScalingConfigurationArnProps.MaxConcurrency)),
-			"MaxSize":                      jsii.String(strconv.Itoa(props.AppRunnerStackInputProps.AutoScalingConfigurationArnProps.MaxSize)),
-			"MinSize":                      jsii.String(strconv.Itoa(props.AppRunnerStackInputProps.AutoScalingConfigurationArnProps.MinSize)),
+			"AutoScalingConfigurationName": *stack.StackName(),
+			"MaxConcurrency":               strconv.Itoa(props.AppRunnerStackInputProps.AutoScalingConfigurationArnProps.MaxConcurrency),
+			"MaxSize":                      strconv.Itoa(props.AppRunnerStackInputProps.AutoScalingConfigurationArnProps.MaxSize),
+			"MinSize":                      strconv.Itoa(props.AppRunnerStackInputProps.AutoScalingConfigurationArnProps.MinSize),
+			"StackName":                    *stack.StackName(),
 		},
 		ServiceToken: customResourceLambda.FunctionArn(),
 	})
@@ -169,7 +181,7 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 	/*
 		L1 Construct for AppRunner Service
 	*/
-	awsapprunner.NewCfnService(stack, jsii.String("AppRunnerServiceL1"), &awsapprunner.CfnServiceProps{
+	apprunnerServiceL1 := awsapprunner.NewCfnService(stack, jsii.String("AppRunnerServiceL1"), &awsapprunner.CfnServiceProps{
 		SourceConfiguration: &awsapprunner.CfnService_SourceConfigurationProperty{
 			AutoDeploymentsEnabled: jsii.Bool(true),
 			AuthenticationConfiguration: &awsapprunner.CfnService_AuthenticationConfigurationProperty{
@@ -216,11 +228,22 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 		AutoScalingConfigurationArn: autoScalingConfigurationArn,
 	})
 
+	awscdk.NewCfnOutput(stack, jsii.String("AppRunnerServiceL2ServiceArn"), &awscdk.CfnOutputProps{
+		Value:      apprunnerServiceL2.ServiceArn(),
+		ExportName: jsii.String(*stack.StackName() + "AppRunnerServiceL2ServiceArn"),
+	})
+
+	awscdk.NewCfnOutput(stack, jsii.String("AppRunnerServiceL1ServiceArn"), &awscdk.CfnOutputProps{
+		Value:      apprunnerServiceL1.AttrServiceArn(),
+		ExportName: jsii.String(*stack.StackName() + "AppRunnerServiceL1ServiceArn"),
+	})
+
 	return stack
 }
 
 func createConnection(connectionName string, region string) (string, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+	ctx := context.Background()
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
 	if err != nil {
 		return "", err
 	}
@@ -231,7 +254,7 @@ func createConnection(connectionName string, region string) (string, error) {
 		ConnectionName: aws.String(connectionName),
 	}
 
-	listConnectionsOutput, err := client.ListConnections(context.TODO(), listConnectionsInput)
+	listConnectionsOutput, err := client.ListConnections(ctx, listConnectionsInput)
 	if err != nil {
 		return "", err
 	}
@@ -251,7 +274,7 @@ func createConnection(connectionName string, region string) (string, error) {
 		ProviderType:   "GITHUB",
 	}
 
-	createConnectionOutput, err := client.CreateConnection(context.TODO(), createConnectionInput)
+	createConnectionOutput, err := client.CreateConnection(ctx, createConnectionInput)
 	if err != nil {
 		return "", err
 	}
