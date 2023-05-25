@@ -144,7 +144,7 @@ func getServiceArns(ctx context.Context, client *cloudformation.Client, stackNam
 
 func waitOperation(ctx context.Context, apprunnerClient *apprunner.Client, operationId string, serviceArn string) error {
 	if operationId == "" {
-		return nil
+		return fmt.Errorf("OperationId is empty")
 	}
 
 	for {
@@ -154,19 +154,21 @@ func waitOperation(ctx context.Context, apprunnerClient *apprunner.Client, opera
 		if err != nil {
 			return err
 		}
+		if len(output.OperationSummaryList) == 0 {
+			return fmt.Errorf("OperationSummaryList is empty")
+		}
 
 		for _, operationSummary := range output.OperationSummaryList {
 			if *operationSummary.Id == operationId {
 				if operationSummary.Status == types.OperationStatusSucceeded {
 					return nil
+				} else if operationSummary.Status == types.OperationStatusInProgress || operationSummary.Status == types.OperationStatusPending {
+					time.Sleep(time.Second * 10)
+				} else {
+					return fmt.Errorf("OperationError status:" + string(operationSummary.Status))
 				}
-				if operationSummary.Status == types.OperationStatusInProgress || operationSummary.Status == types.OperationStatusPending {
-					break
-				}
-				return fmt.Errorf("OperationError status:" + string(operationSummary.Status))
 			}
 		}
-		time.Sleep(time.Second * 10)
 	}
 }
 
