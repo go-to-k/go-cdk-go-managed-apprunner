@@ -2,6 +2,10 @@
 
 [GoマネージドなApp RunnerをGo版CDKで構築する](https://go-to-k.hatenablog.com/entry/go-cdk-go-managed-apprunner)
 
+## 参考
+
+[TypeScript マネージドな App Runner を CDK で構築する](https://go-to-k.hatenablog.com/entry/ts-cdk-ts-managed-apprunner)
+
 ## deploy
 
 ```sh
