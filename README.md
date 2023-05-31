@@ -21,6 +21,7 @@ cdk deploy
 ## 注意
 
 - AWS アカウントの AWS Fargate クォータ(Fargate On-Demand vCPU resource count)値により、CPU, Memory, AutoScalingConfiguration の設定値次第では更新エラーになることがあります。
+  - https://docs.aws.amazon.com/apprunner/latest/dg/manage-autoscaling.html
   - https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-quotas.html
   - 以下のメッセージが 1 回または複数回イベントログに出力された後にサービス更新がエラーになる
     ```
