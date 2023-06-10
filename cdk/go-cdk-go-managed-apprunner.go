@@ -163,9 +163,10 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 			},
 			Connection: apprunner.GitHubConnection_FromConnectionArn(jsii.String(connectionArn)),
 		}),
-		Cpu:          apprunner.Cpu_Of(jsii.String(props.AppRunnerStackInputProps.InstanceConfigurationProps.Cpu)),
-		Memory:       apprunner.Memory_Of(jsii.String(props.AppRunnerStackInputProps.InstanceConfigurationProps.Memory)),
-		VpcConnector: vpcConnectorL2,
+		Cpu:                    apprunner.Cpu_Of(jsii.String(props.AppRunnerStackInputProps.InstanceConfigurationProps.Cpu)),
+		Memory:                 apprunner.Memory_Of(jsii.String(props.AppRunnerStackInputProps.InstanceConfigurationProps.Memory)),
+		VpcConnector:           vpcConnectorL2,
+		AutoDeploymentsEnabled: jsii.Bool(true),
 	})
 
 	var cfnAppRunner awsapprunner.CfnService
@@ -176,7 +177,6 @@ func NewAppRunnerStack(scope constructs.Construct, id string, props *AppRunnerSt
 		Path:     jsii.String("/"),
 		Protocol: jsii.String("HTTP"),
 	})
-	cfnAppRunner.AddPropertyOverride(jsii.String("SourceConfiguration.AutoDeploymentsEnabled"), "true")
 
 	/*
 		L1 Construct for AppRunner Service
